@@ -32,11 +32,12 @@ const app=express()
 
 ;(async () => {
     try{
-        await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
+        // await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)// insted of this use connectDB()
+        await connectDB()
         // to listen it use on
         // app.listen(process.env.PORT,()=>{
         //     console.log(`Server is running on port ${process.env.PORT}`);
-        // }
+        // })
         app.on("error",(error)=>{
             console.error("Error: ",err);
              throw err;
@@ -49,5 +50,10 @@ const app=express()
         console.error("Error: ",err);
         throw err;
     }
-})()
+})()// insted of calling directly u can do like 
+
+// const startServer = async ()=>{
+//     .... same code above 
+//     }
+// startServer()
 */

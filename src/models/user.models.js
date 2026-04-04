@@ -1,0 +1,95 @@
+import mongoose, {Schema} from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+
+// jwt is a bearer token 
+// pre hook is used to do some operation just before saving the document in database , like hashing the password
+const userSchema = new Schema({
+    username:{
+        type: String,
+        required:true,
+        unique:true,
+        lowercase:true,
+        trim:true,
+        index:true// for faster search
+    },
+    email:{
+        type: String,
+        required:true,
+        unique:true,
+        lowercase:true,
+        trim:true,
+    },
+    fullName:{
+        type: String,
+        required:true,
+        trim:true,
+        unique:true,
+    },
+    avatar: {
+        type: String,// cloudinary url
+        required: true,
+    },
+    coverImage:{
+        type: String,// cloudinary url
+    },
+    watchHistory:[
+        {
+            type: Schema.Types.ObjectId,
+            ref:video
+        }
+    ],
+    password:{
+        type: String,//
+        required: [true, "password is Required"]
+    },
+    refreshToken:{
+        type: String,
+    }
+}, 
+{
+    timestamps:true,
+})
+
+// userSchema.pre(" event name", async function(next)) // if event = save it is invoked just before saving and in second parameter function , we should never write it in arrow function because here we need reference of "this" and in arrow function "this" not work   
+userSchema.pre("save", async function(next){
+    if(!this.isModified("password")) return next()// if not modified then it will return next and will not hash the password again and again when document is saved
+    this.password = bcrypt.hash(this.password, 10)// this is a problem ? when ever data(document) is saved it will be hashed again and again , so we need to run this when password feild is modefied not always , so we add if condition above this line
+    next()
+})
+
+userSchema.methods.isPasswordCorrect = async function(password){// this is password passed by user
+    // in bcrypt we have compare() req. 2 parameters they are password(i.e string) other is hashed password with which we want to compare
+    return await bcrypt.compare(password, this.password)
+}
+
+userSchema.methods.generateAccessToken= function(){
+    return jwt.sign(
+        {
+            _id: this._id,
+            email:this.email,
+            username:this.username,
+            fullName:this.fullName
+        },
+        process.env.ACCESS_TOCKEN_SECRET,
+        {
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+        }
+    )
+}
+userSchema.methods.genetateAccessToken=function(){
+    return jwt.sign(
+        {
+            _id: this._id,
+            
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+        }
+    )
+}
+
+
+
+export const User = mongoose.model("User",userSchema)
