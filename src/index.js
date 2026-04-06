@@ -2,10 +2,10 @@
 import dotenv from 'dotenv';
 import connectDB from './db/index.js';
 dotenv.config({path: './env'})
+import {app} from './app.js';
 
 connectDB()// returns a promise
 .then(async ()=>{
-    await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
     app.on("error",(err)=>{
         console.log("APP ERROR!!!", err);
         throw err;

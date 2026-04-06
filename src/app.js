@@ -16,4 +16,13 @@ app.use(express.urlencoded({extended: true, limit: "16kb"})) //Handles form subm
 app.use(express.static("public")) // used for images etc.. 
 app.use(cookieParser())
 
+// Routes import
+import userRouter from './routes/user.routes.js'
+
+// Routes decleration
+// previously we use app.get , as we were writing both .get(i.e. routes) and .post(i.e. controller) in the same file, but now we have seprated them into different folders so we need use middle ware to get router so we use app.use() 
+app.use("/users", userRouter)
+
+
+
 export {app}

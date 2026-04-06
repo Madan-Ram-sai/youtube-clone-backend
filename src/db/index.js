@@ -7,7 +7,7 @@ const connectDB = async() =>{
             throw new Error("MONGODB_URI not found");
             exit(1);
         }
-        if (!process.env.DB_NAME) {
+        if (!DB_NAME) {
             throw new Error("DB_NAME not found");
             exit(1);
         }
