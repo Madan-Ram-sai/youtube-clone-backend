@@ -25,7 +25,7 @@ const registerUser = asyncHandler(async (req,res)=>{
     const {username,email,fullName,password} = req.body;
     // if we are getting data from url then we can use req.params or req.query depending on how the data is sent
     console.log("username:", username, "\nemail: ",email,fullName);//  in postman i.e. in raw->json format order is not important , if all fiels are not sent from postmen then we get undefined for those fields.
-    console.log("req.body: ",req.body)
+    // console.log("req.body: ",req.body)
     if(
         [fullName,email,username,password].some((field)=>
             field?.trim()==="")// if field is present then trim(i.e remove extra spaces) and after that if it is empty then condition is true (this applies to all fields)
@@ -43,10 +43,19 @@ const registerUser = asyncHandler(async (req,res)=>{
         throw new ApiError(400, "User with this username or email already exists")
     }
     // images etc.. we will get from req.files,
-    const avatarLocalPath = req.files?.avatar[0]?.path;// if we are getting single image then we can use req.file and if multiple then req.files and "avatar" is same name given in user.routes.js 
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
-    // as avatar and coverImage comes from user.routes.js
-    console.log("files: ", req.files) 
+    const avatarLocalPath = req.files?.avatar[0]?.path;// if we are getting single image then we can use req.file and if multiple then req.files and "avatar" is same name given in user.routes.js , same for below coverImage as well
+
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // we will get TypeError: Cannot read properties of undefined (reading &#39;0&#39;)
+    // bez. it is not mandetory for cover image right then .coverImage how can we access if not present ha.. so write like below
+
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+    //or
+    // let coverImageLocalPath;
+    // if(req.files && req.files.coverImage && req.files.coverImage.length > 0){
+    //     coverImageLocalPath= req.files.coverImage[0].path
+    // }
+
+    // console.log("files: ", req.files) 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar is required")
     }
@@ -55,7 +64,7 @@ const registerUser = asyncHandler(async (req,res)=>{
     // NOW UPLOADING TO CLOUDINARY
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     const coverImg = coverImageLocalPath && await uploadOnCloudinary(coverImageLocalPath)// coverImageLocalPath && bez. if not there then it won't procide
-    console.log(avatar)
+    console.log("avatar is:" ,avatar)
 
     if(!avatar){
         throw new ApiError(400, "Avatar is required")
@@ -73,7 +82,7 @@ const registerUser = asyncHandler(async (req,res)=>{
 
     // check user creation and remove password and refreshtoken fields
     const isuserCreated = await User.findById(user._id).select(// to check user is created or not , and also it returns the user document if created successfully
-        "-password -refreshTocken"// -ve means it is not required
+        "-password -refreshToken"// -ve means it is not required
     )
     if(!isuserCreated){
         throw new ApiError(500, "User registration failed, please try again")

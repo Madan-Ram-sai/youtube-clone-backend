@@ -52,10 +52,19 @@ const userSchema = new Schema({
 })
 
 // userSchema.pre(" event name", async function(next)) // if event = save it is invoked just before saving and in second parameter function , we should never write it in arrow function because here we need reference of "this" and in arrow function "this" not work   
-userSchema.pre("save", async function(next){
-    if(!this.isModified("password")) return next()// if not modified then it will return next and will not hash the password again and again when document is saved
+// userSchema.pre("save", async function(next){
+//     if(!this.isModified("password")) return next()// if not modified then it will return next and will not hash the password again and again when document is saved
+//     this.password = await bcrypt.hash(this.password, 10)// this is a problem ? when ever data(document) is saved it will be hashed again and again , so we need to run this when password feild is modefied not always , so we add if condition above this line
+//     next()
+// })
+// ⭐ this will give TypeError: next is not a function because in newer version of mongodb we can't
+//use async + next() so remove anything do like below
+
+
+userSchema.pre("save", async function(){
+    if(!this.isModified("password")) return// if not modified then it will return next and will not hash the password again and again when document is saved
     this.password = await bcrypt.hash(this.password, 10)// this is a problem ? when ever data(document) is saved it will be hashed again and again , so we need to run this when password feild is modefied not always , so we add if condition above this line
-    next()
+    
 })
 
 userSchema.methods.isPasswordCorrect = async function(password){// this is password passed by user
