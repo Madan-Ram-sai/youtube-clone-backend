@@ -43,8 +43,9 @@ const registerUser = asyncHandler(async (req,res)=>{
         throw new ApiError(400, "User with this username or email already exists")
     }
     // images etc.. we will get from req.files,
-    const avatarLocalPath = req.files?.avatar[0]?.path;// if we are getting single image then we can use req.file and if multiple then req.files and "avatar" is same name given in user.models.js 
+    const avatarLocalPath = req.files?.avatar[0]?.path;// if we are getting single image then we can use req.file and if multiple then req.files and "avatar" is same name given in user.routes.js 
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // as avatar and coverImage comes from user.routes.js
     console.log("files: ", req.files) 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar is required")
