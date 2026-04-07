@@ -1,6 +1,6 @@
 import mongoose, {Schema} from "mongoose";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
 // jwt is a bearer token 
 // pre hook is used to do some operation just before saving the document in database , like hashing the password
@@ -36,7 +36,7 @@ const userSchema = new Schema({
     watchHistory:[
         {
             type: Schema.Types.ObjectId,
-            ref:video
+            ref:'video'
         }
     ],
     password:{
@@ -54,7 +54,7 @@ const userSchema = new Schema({
 // userSchema.pre(" event name", async function(next)) // if event = save it is invoked just before saving and in second parameter function , we should never write it in arrow function because here we need reference of "this" and in arrow function "this" not work   
 userSchema.pre("save", async function(next){
     if(!this.isModified("password")) return next()// if not modified then it will return next and will not hash the password again and again when document is saved
-    this.password = bcrypt.hash(this.password, 10)// this is a problem ? when ever data(document) is saved it will be hashed again and again , so we need to run this when password feild is modefied not always , so we add if condition above this line
+    this.password = await bcrypt.hash(this.password, 10)// this is a problem ? when ever data(document) is saved it will be hashed again and again , so we need to run this when password feild is modefied not always , so we add if condition above this line
     next()
 })
 
@@ -71,13 +71,13 @@ userSchema.methods.generateAccessToken= function(){
             username:this.username,
             fullName:this.fullName
         },
-        process.env.ACCESS_TOCKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET,
         {
             expiresIn: process.env.ACCESS_TOKEN_EXPIRY
         }
     )
 }
-userSchema.methods.genetateAccessToken=function(){
+userSchema.methods.generateAccessToken=function(){
     return jwt.sign(
         {
             _id: this._id,
