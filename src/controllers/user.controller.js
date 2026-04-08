@@ -63,7 +63,8 @@ const registerUser = asyncHandler(async (req,res)=>{
     
     // NOW UPLOADING TO CLOUDINARY
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-    const coverImg = coverImageLocalPath && await uploadOnCloudinary(coverImageLocalPath)// coverImageLocalPath && bez. if not there then it won't procide
+    // const coverImg = coverImageLocalPath && await uploadOnCloudinary(coverImageLocalPath)// coverImageLocalPath && bez. if not there then it won't proceede
+    const coverImg = await uploadOnCloudinary(coverImageLocalPath)// no need of 'coverImageLocalPath &&' bez. if not there then cloudnary will write null
     console.log("avatar is:" ,avatar)
 
     if(!avatar){
@@ -93,4 +94,128 @@ const registerUser = asyncHandler(async (req,res)=>{
     )
 })
 
-export {registerUser} 
+
+const generateAccessAndRefreshToken= async (userId) => {
+    try {
+        const user =await User.findById(userId)
+
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave:false })
+
+        return {accessToken,refreshToken}
+    }catch (error) {
+        throw new ApiError(500,"Something went wrong while generating token")
+    }
+}
+
+const loginUser = asyncHandler(async (req,res) =>{
+    // req body -> data (take username password)
+    // username based login or email based
+    // check from db is that user exist
+    // check username and password correct
+    // generate refresh token and acces token
+    // send cookies
+
+    const {email, username, password} = req.body
+
+    if(!(username || email)){
+        throw new ApiError(400, "username or email is required")
+    }
+
+    // User.findOne({username});
+    // User.findOne({email}); // any one of user and email
+    const user = await User.findOne({ $or: [{username},{email}]})
+    // note:- User is object of mongoose , and user is current user created
+
+    if(!user){
+        throw new ApiError(404, "User doesnot exist!!")
+    }
+    
+    const isPassValid = await user.isPasswordCorrect(password)// password is that which we got from req body
+    
+    if(!isPassValid){
+        throw new ApiError(401, "password is incorrect")
+    }
+
+    const {accessToken, refreshToken} =await generateAccessAndRefreshToken(user._id)
+
+    // note:here in user, refreshToken is empty bcs after creating user we called is valid right so it dont have refreshToken
+    // so either update user or call db again
+
+    const loggedInUser= await User.findById(user._id).select("-password -refreshToken")
+
+    // for cookies 
+    // cookies are bydefault modifible from frontend but we want to make it unmodifiable so we will use httpOnly and secure flag
+    const options={
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200).cookie("refreshToken",refreshToken,options).cookie("accessToken",accessToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user: loggedInUser, refreshToken,accessToken
+            },
+            "User Loggedin Successfully"
+        )
+    )
+})
+
+const logoutUser = asyncHandler(async(req,res)=>{
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new:true
+        }
+    )
+
+    const options={
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(new ApiResponse(200,{},"User logged Out Successfully"))
+
+})
+
+/*
+// without middleware -> ❌not recomended 
+const logoutUser = asyncHandler(async(req,res)=>{
+    // the same thing which we wrote in middle ware 
+    if(!token){
+        throw new ApiError(401, "Unauthorized request")
+    }
+
+    const decodedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET) // this is 
+
+    const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
+
+    if(!user){
+        throw new ApiError(401,"Invalid Access Token")
+    }
+
+    req.user =user;
+    
+    await User.findByIdAndUpdate(
+    ..... same code as above
+
+    // this code is not recommended because it is redudent and not reusable 
+
+})
+*/
+
+
+export {registerUser, loginUser, logoutUser} 
