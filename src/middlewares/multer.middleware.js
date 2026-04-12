@@ -1,3 +1,9 @@
+// Multer is used only when request encoding is multipart/form-data
+
+// If you try:
+// Sending file in JSON (not possible)
+// Using multer for normal JSON (unnecessary)
+
 import multer from "multer";
 
 // const storage = multer.memoryStorage() // store file in memory as buffer

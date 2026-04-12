@@ -68,7 +68,7 @@ const registerUser = asyncHandler(async (req,res)=>{
     console.log("avatar is:" ,avatar)
 
     if(!avatar){
-        throw new ApiError(400, "Avatar is required")
+        throw new ApiError(500, "Failed to upload avatar");
     }
     
     // create user object - create entry and save user to database
@@ -250,4 +250,111 @@ const refreshAccessToken = asyncHandler(async (req,res)=>{// this is for again a
     )
 })
 
-export {registerUser, loginUser, logoutUser, refreshAccessToken} 
+const changePassword = asyncHandler(async(req,res)=>{
+    const {oldPassword,newPassword}=req.body
+
+    const user=await User.findById(req.user?._id);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"Incorrect old password")
+    }
+
+    user.password=newPassword // note we have just updated the password field but we have not saved it in database so we need to save it and we have pre save hook in user model so use it
+    await user.save({validateBeforeSave:false})
+    return res.status(200).json(new ApiResponse(200,{},"Password changes successfully"))
+})
+
+const getCurrentUser = asyncHandler(async(req,res)=>{
+    return res.status(200).json(200, req.user,"user fetched successfully")
+})
+
+const updateAccountDetails= asyncHandler(async(req,res)=>{
+    //Tip : if u are updating file then keep seperate endpoint i.e (like update profile pic etc...) we use multer(as file is involved)
+    const {fullName,email}=req.body
+
+    if(!fullName || !email){
+        throw new ApiError(400,"All fiels are required")
+    }
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                fullname: fullName,
+                email: email
+            }
+        },//fields we want to update
+        {
+            new:true,
+            runValidators:true
+        }// return updated document
+    ).select("-password")
+
+    return res.status(200).json(new ApiResponse(200,{user},"Account details updated successfully"))
+})
+// bez here we take only one image so file
+const updateUserAvatar = asyncHandler(async(req,res)=>{
+    const avatarLocalPath=req.file?.path
+    if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar File is missing")
+    }
+    
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    
+    if(!avatar.url){
+        throw new ApiError(500,"Error while uploading Avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar:avatar.url
+            }
+        },
+        {
+            new:true,
+            runValidators:true
+        }
+    ).select("-password")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(200,user, "Avatar is updated sucessfully")
+    )
+})
+
+const updateUserCoverImage = asyncHandler(async(req,res)=>{
+    const coverImageLocalPath=req.file?.path
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"cover Image File is missing")
+    }
+    
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    
+    if(!coverImage.url){
+        throw new ApiError(500,"Error while uploading Cover Image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage:coverImage.url
+            }
+        },
+        {
+            new:true,
+            runValidators:true
+        }
+    ).select("-password")
+    return res.status(200)
+    .json(
+        new ApiResponse(200,user, "Cover Image is updated sucessfully")
+    )
+})
+
+export {
+    registerUser, loginUser, logoutUser, refreshAccessToken,
+    changePassword,getCurrentUser,updateAccountDetails,
+    updateUserAvatar,updateUserCoverImage
+    } 
