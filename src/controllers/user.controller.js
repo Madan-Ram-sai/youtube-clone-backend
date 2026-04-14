@@ -298,6 +298,8 @@ const updateUserAvatar = asyncHandler(async(req,res)=>{
         throw new ApiError(400,"Avatar File is missing")
     }
     
+    //To delete old image 
+
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     
     if(!avatar.url){
@@ -353,8 +355,75 @@ const updateUserCoverImage = asyncHandler(async(req,res)=>{
     )
 })
 
+const getUserChannelProfile = asyncHandler(async(req,res)=>{
+    const {username}=req.params
+    console.log(req)
+
+    if(!username?.trim()){
+        throw new ApiError(400,"username is missing")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match:{
+                username: username.toLowerCase()
+            }
+        },
+        {// to get how many ppl subscribed to this channel
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"channel",
+                as:"subscribers"// feild name
+            }
+        },
+        {// to get how many ppl i have subscribed 
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField: "subscriber",
+                as:"subscribed_to"// feild name
+            }
+        },
+        {
+            $addFields:{
+                subscribersCount : {$size: "$subscribers"},
+                channelsSubscribedToCount: {$size : "$subscribed_to"},
+                isSubscribed : { $cond:{
+                    if: {$in: [req.user?._id, "$subscribers.subscriber"]},// is this correct
+                    then: true,
+                    else: false
+                }}
+            }
+        },
+        {
+            // project is for givig only selected things to frontend
+            $project: {
+                fullName:1,
+                username:1,
+                subscribersCount:1,
+                channelsSubscribedToCount:1,
+                isSubscribed:1,
+                avatar:1,
+                coverImage:1,
+                email:1,
+            }
+        }
+    ])
+
+    console.log(channel);// in this see subscriber and subscribed to
+
+    if(!channel?.length){
+        throw new ApiError(404,"channel does not exist")
+    }
+    
+    return res.status(200)
+    .json(
+        new ApiResponse(200, channel[0],"User channel fetched Successfully")
+    )
+}) 
 export {
     registerUser, loginUser, logoutUser, refreshAccessToken,
     changePassword,getCurrentUser,updateAccountDetails,
-    updateUserAvatar,updateUserCoverImage
+    updateUserAvatar,updateUserCoverImage,getUserChannelProfile
     } 
